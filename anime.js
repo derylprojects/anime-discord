@@ -1,26 +1,49 @@
-const animeFinder = require("..animeFinder");
-const Discord = require("discord.js");
+const { getQuote } = require('..fetch-quote');
+const { commandInfo, errorResponse, formatResponse } = require('../util');
 
 module.exports = {
-  name: "anime",
-  description: "find anime",
-  async execute(msg, args) {
-    var temp = msg.attachments;
-    temp.forEach(async (element) => {
-      var url = element.url;
-      var ans = await animeFinder(url);
-      var episode = ans.episode.toString();
-      var similarity = (ans.similarity * 100).toString();
-      const embed = new Discord.MessageEmbed()
-        .setTitle(ans.title_english)
-        .setDescription(
-          "Episode : " + episode + " Similarity : " + similarity + "%"
-        )
-        .setFooter(
-          `(Time taken: ${(Date.now() - msg.createdAt) / 1000} Seconds)` +
-            " Bot by Tecno"
-        );
-        msg.channel.send({embeds:[embed]});
-    });
-  },
+	name: 'quote',
+	description: 'Get a random quote or get a specific one by anime/character name.',
+	cooldown: 5,
+	args: true,
+	usage: commandInfo,
+	async execute(message, args) {
+
+		if(args[0] === 'random') {
+			const response = await getQuote('/random');
+			return message.channel.send(formatResponse(response));
+		}
+
+
+		if(args[0] === 'anime') {
+			const animeName = args.slice(1).join(' ');
+			if(!animeName) {
+				return message.channel.send(errorResponse('No anime name is provided. Please provide a valid anime name'));
+			}
+
+			const response = await getQuote(`/random/anime?title=${animeName}`);
+
+			if(!response) {
+				return message.channel.send(errorResponse(`Gak ada "${animeName}" untuk sekarang !`));
+			}
+
+			return message.channel.send(formatResponse(response));
+		}
+
+
+		if(args[0] === 'char') {
+			const characterName = args.slice(1).join(' ');
+			if(!characterName) {
+				return message.channel.send(errorResponse('Kirim nama yang valid ya'));
+			}
+
+			const response = await getQuote(`/random/character?name=${characterName}`, message);
+
+			if(!response) return message.channel.send(errorResponse(`Gak ada quote "${characterName}" untuk sekarang !`));
+
+			return message.channel.send(formatResponse(response));
+		}
+
+		return message.channel.reply('⚠️ **Command apa itu!** Coba !help');
+	},
 };
